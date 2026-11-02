@@ -7,7 +7,7 @@ It needs internet for the base map and the two live layers (burnt areas, forest 
 
 ## Versions
 
-`versions.html` compares five ways to draw the same data, plus the classic map (`index.html`):
+Besides the main map (`index.html`) there are five alternative drawings of the same data:
 `v1.html` engraving, `v2.html` survey contours, `v3.html` halftone, `v4.html` atlas plates, `v5.html` field dossier.
 All of them use one engine (`app/core.js`, `app/core.css`): data tiles, panel, legend frame, readout, city ranking
 and base map. A version only defines how the hazards are drawn (`paint`) and its legend.
