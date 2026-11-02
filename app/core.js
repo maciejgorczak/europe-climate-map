@@ -73,14 +73,21 @@ const url = (l, p, z, x, y) => `tiles/data/${l.id}_${p}/${z}/${x}/${y}.png`;
 const luts = {};
 const lut = (l, p) => luts[l.id + p] || (luts[l.id + p] = Float32Array.from({ length: 256 }, (_, c) => c ? sev(l, dec(l.id, c)) : -1));
 
+// local scale: 0 = best value in the current view, 1 = worst (st.local.r[id] = [best, worst]); falls back to the Europe scale
+function lutLocal(l, p) {
+  const r = st.local && st.local.r[l.id];
+  if (!r) return lut(l, p);
+  return luts['L' + l.id + p] || (luts['L' + l.id + p] = Float32Array.from({ length: 256 }, (_, c) => c ? clamp((dec(l.id, c) - r[0]) / ((r[1] - r[0]) || 1e-9)) : -1));
+}
+
 /* Severity (0..1, -1 = no data) for one display tile at n x n pixels. Data exists for zoom 3-7 (1 km at 7);
    deeper zooms resample the zoom-7 tile bilinearly so line-work stays sharp at every zoom.
    coarsen > 0 reads a coarser level on purpose, for versions that need a generalised field (contours). */
-async function field(l, p, z, x, y, n, coarsen = 0) {
+async function field(l, p, z, x, y, n, coarsen = 0, T = lut(l, p)) {
   const nz = Math.max(3, Math.min(7, z) - coarsen), k = z - nz, s2 = 2 ** k, tx = Math.floor(x / s2), ty = Math.floor(y / s2);
   const d = await px(url(l, p, nz, tx, ty));
   if (!d) return null;
-  const T = lut(l, p), out = new Float32Array(n * n), f = s2 * n / 256;
+  const out = new Float32Array(n * n), f = s2 * n / 256;
   const ox = (x - tx * s2) * 256 / s2, oy = (y - ty * s2) * 256 / s2;
   for (let j = 0; j < n; j++) {
     const v = oy + (j + .5) / f - .5, y0 = Math.max(0, Math.min(255, Math.floor(v))), y1 = Math.min(255, y0 + 1), fy = Math.max(0, Math.min(1, v - y0));
@@ -124,10 +131,17 @@ const Hazards = L.GridLayer.extend({
     const R = Math.min(2, Math.ceil(window.devicePixelRatio || 1)), n = 256 * R;
     const cv = document.createElement('canvas'); cv.width = cv.height = n; cv.style.width = cv.style.height = '256px';
     const sel = selData();
-    Promise.all(sel.map(l => field(l, per(l), co.z, co.x, co.y, n, O.coarsen || 0))).then(F => {
+    const get = T => Promise.all(sel.map((l, i) => field(l, per(l), co.z, co.x, co.y, n, O.coarsen || 0, T[i])));
+    Promise.all([get(sel.map(l => lut(l, per(l)))), st.local ? get(sel.map(l => lutLocal(l, per(l)))) : null]).then(([G, FL]) => {
+      const F = FL || G;
       if (F.some(Boolean)) {
         const ctx = cv.getContext('2d'), img = ctx.createImageData(n, n);
-        O.paint(img.data, { sel, F, n, R, co, combine: () => combine(F, sel) });
+        // combine(): weighted score from the Europe-wide severities; on a local scale it is stretched to the view's range
+        O.paint(img.data, { sel, F, n, R, co, combine: raw => {
+          const S = combine(G, sel);
+          if (st.local && !raw) { const [a, b] = st.local.s; for (let p = 0; p < S.length; p++) if (S[p] >= 0) S[p] = clamp((S[p] - a) / ((b - a) || 1e-9)); }
+          return S;
+        } });
         ctx.putImageData(img, 0, 0);
       }
       done(null, cv);
@@ -220,6 +234,7 @@ function refresh() {
     else if (live[o.id]) map.removeLayer(live[o.id]);
   }
   legend(); ranking();
+  localUI && localUI();
   O.after && O.after(st);
 }
 const live = {};
@@ -230,9 +245,69 @@ function legend() {
   if (st.on.has('ws') && st.period !== 'h') notes.push(`Water stress 2050 uses Aqueduct ${st.period === 'm' ? 'SSP3-7.0' : 'SSP5-8.5'}.`);
   const lv = LIVE.filter(o => st.on.has(o.id)).map(o => o.name).join(', ');
   const body = sel.length ? O.legend(sel) : '<div class="fn" style="margin:0">Select a hazard on the left.</div>';
-  $('#legend').innerHTML = `<div class="t">${PLONG[st.period]}</div>${body}${lv ? `<div class="fn">Overlays: ${lv}.</div>` : ''}${notes.length ? `<div class="fn">${notes.join(' ')}</div>` : ''}`;
+  if (st.local) notes.unshift(`Local scale: colours stretched to the values in this view (score ${fmt(st.local.s[0] * 100)}-${fmt(st.local.s[1] * 100)}). Values and scores elsewhere stay Europe-wide.`);
+  $('#legend').innerHTML = `<div class="t">${PLONG[st.period]}${st.local ? ' \u00b7 local scale' : ''}</div>${body}${lv ? `<div class="fn">Overlays: ${lv}.</div>` : ''}${notes.length ? `<div class="fn">${notes.join(' ')}</div>` : ''}`;
 }
-const rangeLabel = l => `${show(l, l.s[0])}→${withUnit(l, l.s[1])}`;
+const rangeLabel = l => {
+  const lr = st.local && st.local.r[l.id], [a, b] = lr || l.s, fine = lr && Math.abs(b - a) < 5; // narrow local ranges need a decimal
+  const f = v => fine ? (l.sign && v > 0 ? '+' : '') + v.toFixed(1) : show(l, v);
+  return `${f(a)}\u2192${f(b)}${l.u ? (l.u === '°C' || l.u === 'mm' ? ' ' : '') + l.u : ''}`;
+};
+
+// ---------- local scale: stretch the colours to what is in view ----------
+const pct = (a, q) => a[Math.min(a.length - 1, Math.max(0, Math.round(q * (a.length - 1))))];
+async function viewStats() {
+  const sel = selData(), z = Math.max(3, Math.min(7, Math.round(map.getZoom()))), N = 256 * 2 ** z, b = map.getBounds();
+  const X = lon => (lon + 180) / 360 * N, Y = lat => (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * N;
+  const x0 = Math.max(0, X(b.getWest())), x1 = Math.min(N - 1, X(b.getEast())), y0 = Math.max(0, Y(b.getNorth())), y1 = Math.min(N - 1, Y(b.getSouth()));
+  const step = Math.max(1, Math.ceil(Math.sqrt((x1 - x0) * (y1 - y0) / 2e5))), tiles = {}; // read at most ~200k pixels
+  const keys = [];
+  for (let ty = Math.floor(y0 / 256); ty <= Math.floor(y1 / 256); ty++) for (let tx = Math.floor(x0 / 256); tx <= Math.floor(x1 / 256); tx++) keys.push(tx + '/' + ty);
+  await Promise.all(keys.flatMap(k => sel.map(async (l, i) => { const [tx, ty] = k.split('/'); tiles[i + '/' + k] = await px(url(l, per(l), z, +tx, +ty)); })));
+  const vals = sel.map(() => []), T = sel.map(l => lut(l, per(l))), w = sel.map(l => st.w[l.id]), sc = [];
+  for (let gy = Math.ceil(y0); gy <= y1; gy += step) for (let gx = Math.ceil(x0); gx <= x1; gx += step) {
+    const k = Math.floor(gx / 256) + '/' + Math.floor(gy / 256), p = (gy % 256) * 256 + gx % 256;
+    let sw = 0, ww = 0, wz = 0, real = false;
+    sel.forEach((l, i) => {
+      const d = tiles[i + '/' + k], c = d ? d[p] : 0;
+      if (c) { vals[i].push(dec(l.id, c)); sw += w[i] * T[i][c]; ww += w[i]; if (!l.nd0) real = true; } else if (l.nd0) wz += w[i];
+    });
+    if (real && ww + wz > 0) sc.push(sw / (ww + wz));
+  }
+  const r = {};
+  sel.forEach((l, i) => {
+    if (!vals[i].length) return;
+    const a = Float64Array.from(vals[i]).sort(), lo = pct(a, .02), hi = pct(a, .98);
+    r[l.id] = l.s[1] > l.s[0] ? [lo, hi] : [hi, lo]; // [best, worst]
+  });
+  const s = Float64Array.from(sc).sort();
+  return { r, s: s.length ? [pct(s, .02), pct(s, .98)] : [0, 1] };
+}
+async function setLocal(on) {
+  st.local = on && selData().length ? await viewStats() : null;
+  refresh();
+}
+const update = () => st.local ? setLocal(true) : refresh(); // a change of hazards, time or weights needs new local ranges
+let localUI = null;
+function localButton() {
+  const el = document.createElement('div'), z0 = map.getZoom();
+  el.id = 'local';
+  $('#map').appendChild(el);
+  L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el);
+  el.addEventListener('click', e => { const a = e.target.closest('button')?.dataset.a; if (a) setLocal(a === 'on'); });
+  const ui = () => {
+    const visible = map.getZoom() >= z0 + 1 && selData().length > 0; // only once you have zoomed in
+    if (!visible && st.local) { st.local = null; return refresh(); }
+    el.classList.toggle('show', visible);
+    el.dataset.tip = st.local
+      ? 'Colours are stretched to the values that were in view when you clicked. Move the map and update, or go back to the Europe-wide scale.'
+      : 'Stretch the colours to the values inside this view, so you can compare places within a country or region. Values and scores stay the same.';
+    el.innerHTML = st.local ? '<button data-a="on">Update to this view</button><button data-a="off" class="on">Back to Europe scale</button>'
+      : '<button data-a="on">Rescale to this view</button>';
+  };
+  map.on('zoomend', ui);
+  return ui;
+}
 
 const cityVal = (l, i) => (CV[l.id + '_' + per(l)] || [])[i];
 function ranking() {
@@ -335,7 +410,7 @@ function start(opts) {
   // controls
   const segs = (id, key) => $(id) && $(id).addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    st[key] = b.dataset.v; $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); refresh();
+    st[key] = b.dataset.v; $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); update();
   });
   segs('#period', 'period'); segs('#mode', 'mode');
   $('#hazards').addEventListener('click', e => {
@@ -344,13 +419,13 @@ function start(opts) {
     e.preventDefault();
     const id = el.dataset.id;
     if (st.on.has(id)) st.on.delete(id); else if (!O.maxOn || st.on.size < O.maxOn) st.on.add(id);
-    refresh();
+    update();
   });
   let raf = 0;
   $('#hazards').addEventListener('input', e => {
     if (!e.target.dataset.w) return;
     st.w[e.target.dataset.w] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value;
-    cancelAnimationFrame(raf); raf = requestAnimationFrame(refresh);
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(update);
   });
   $('#live').addEventListener('click', e => {
     const b = e.target.closest('.chip'); if (!b) return;
@@ -375,6 +450,7 @@ function start(opts) {
   $('#toggle').addEventListener('click', () => $('#panel').classList.toggle('open'));
   if (location.protocol === 'file:') $('#banner').style.display = 'block';
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => location.reload());
+  localUI = localButton();
   refresh();
   return map;
 }

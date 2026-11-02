@@ -146,6 +146,18 @@ details[open] > summary.lab::after { content: '−'; }
 @media (prefers-color-scheme: dark) { .ink-tiles { filter: grayscale(1) invert(1) brightness(.9); } }
 .street-tiles { filter: sepia(.5) saturate(.6) contrast(.9); }
 
+/* local scale button: top centre of the map, only once you zoom in */
+#local { position: absolute; z-index: 1000; top: 12px; left: 50%; transform: translateX(-50%); display: none; }
+#local.show { display: flex; }
+#local button { font: 500 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--ink); padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+#local button + button { border-left: 0; }
+#local button:hover { background: var(--bg-2); }
+#local button.on { background: var(--ink); color: var(--bg); }
+#local::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); width: 270px;
+  background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); padding: 8px 10px; font: 11.5px/1.4 var(--font);
+  opacity: 0; pointer-events: none; transition: opacity .15s; }
+#local:hover::after, #local:focus-within::after { opacity: 1; }
 #banner { display: none; position: absolute; z-index: 1000; left: 50%; top: 12px; transform: translateX(-50%); max-width: 480px;
   background: var(--bg); color: var(--ink); border: 1px solid var(--ink); padding: 10px 14px; }
 #toggle { display: none; }
@@ -157,5 +169,7 @@ details[open] > summary.lab::after { content: '−'; }
     text-transform: uppercase; padding: 2px 0 16px; cursor: pointer; }
   #legend { left: 12px; right: 50px; width: auto; top: 10px; bottom: auto; max-height: 34%; }
   .leaflet-bottom { bottom: 46px; }
+  #local { top: auto; bottom: 74px; }
+  #local::after { top: auto; bottom: calc(100% + 6px); }
   .leaflet-popup-content { width: 260px !important; }
 }

@@ -55,7 +55,8 @@ CM.start({
   },
   legend(sel) {
     if (CM.st.mode === 'score') return `<div class="scale">${SEQ.map(c => `<span style="background:${c}"></span>`).join('')}</div>
-      <div class="ticks"><span>0 low</span><span>score</span><span>100 severe</span></div>
+      <div class="ticks">${CM.st.local ? `<span>${CM.fmt(CM.st.local.s[0] * 100)} lowest here</span><span>${CM.fmt(CM.st.local.s[1] * 100)} highest here</span>`
+        : '<span>0 low</span><span>score</span><span>100 severe</span>'}</div>
       <div class="fn">${sel.map(l => l.name).join(', ')}</div>`;
     return sel.map(l => `<div class="row">${sw(COL[l.id])}<span class="nm">${l.name}</span><span class="rg">${CM.rangeLabel(l)}</span></div>`).join('')
       + '<div class="fn">Stronger colour = worse. Colours mix where hazards overlap.</div>';
