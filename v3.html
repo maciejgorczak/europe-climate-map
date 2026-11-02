@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Climate Risk - Halftone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="app/core.css">
+</head>
+<body>
+<div id="app"><aside id="panel"></aside><div id="map"></div></div>
+<div id="legend"></div>
+<div id="banner">This map needs a small local web server. Double-click <b>start.command</b> in the map folder.</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/layers.js"></script><script src="data/cities.js"></script><script src="data/base.js"></script>
+<script src="app/core.js"></script>
+<script>
+/* 3 - Halftone. Each hazard is a dot screen at its own print angle (15, 75, 45, 0 degrees, as in CMYK).
+   Dot area is the severity, sampled at the dot centre so every dot stays round. Overlapping screens form
+   rosettes: compound risk becomes a visible texture instead of a muddy mix. First hazard = olive screen. */
+const ANG = [15, 75, 45, 0], CELL = 7;
+
+const glyph = (l, i) => {
+  if (i < 0) return '<svg class="gl" viewBox="0 0 18 12"><rect x=".5" y=".5" width="17" height="11" fill="none" stroke="var(--line)"/></svg>';
+  const c = i === 0 ? 'var(--accent)' : 'var(--ink)', dots = [];
+  for (let y = -6; y < 18; y += 4.5) for (let x = -6; x < 24; x += 4.5) dots.push(`<circle cx="${x}" cy="${y}" r="${.6 + (x + 6) / 24 * 1.5}"/>`);
+  return `<svg class="gl" viewBox="0 0 18 12"><defs><clipPath id="h${l.id}"><rect width="18" height="12"/></clipPath></defs>
+    <g clip-path="url(#h${l.id})"><g transform="rotate(${-ANG[i]} 9 6)" fill="${c}">${dots.join('')}</g></g>
+    <rect x=".5" y=".5" width="17" height="11" fill="none" stroke="var(--line)"/></svg>`;
+};
+
+CM.start({
+  title: 'Halftone', eyebrow: 'Climate risk 2050 · version 3', maxOn: 4,
+  modes: [{ id: 'layers', label: 'Each hazard' }, { id: 'score', label: 'One score' }],
+  glyph,
+  paint(o, { sel, F, n, R, co, combine }) {
+    const cell = CELL * R, ink = CM.col.ink, acc = CM.col.accent, gx0 = co.x * n, gy0 = co.y * n;
+    const L = CM.st.mode === 'score'
+      ? [{ S: combine(), a: 45, c: ink }]
+      : sel.map((l, i) => ({ S: F[i], a: ANG[i], c: i === 0 ? acc : ink })).filter(x => x.S);
+    for (const x of L) { x.cs = Math.cos(x.a * Math.PI / 180); x.sn = Math.sin(x.a * Math.PI / 180); }
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const p = j * n + i, gx = gx0 + i, gy = gy0 + j;
+      let r = 0, g = 0, b = 0, a = 0;
+      for (const x of L) {
+        const u = gx * x.cs + gy * x.sn, v = -gx * x.sn + gy * x.cs;
+        const cu = (Math.floor(u / cell) + .5) * cell, cv = (Math.floor(v / cell) + .5) * cell;
+        // severity at the dot centre (back in screen space), so the dot is round even on a slope
+        const ci = Math.round(cu * x.cs - cv * x.sn) - gx0, cj = Math.round(cu * x.sn + cv * x.cs) - gy0;
+        const s = ci >= 0 && ci < n && cj >= 0 && cj < n ? x.S[cj * n + ci] : x.S[p];
+        if (s <= .04) continue;
+        const rad = cell * .47 * Math.sqrt(s); // dots never quite merge: the paper keeps showing through
+        const cov = Math.max(0, Math.min(1, rad - Math.hypot(u - cu, v - cv) + .5)) * .94;
+        if (!cov) continue;
+        const k = a * (1 - cov), na = cov + k;
+        r = (x.c[0] * cov + r * k) / na; g = (x.c[1] * cov + g * k) / na; b = (x.c[2] * cov + b * k) / na; a = na;
+      }
+      if (a) { o[p * 4] = r; o[p * 4 + 1] = g; o[p * 4 + 2] = b; o[p * 4 + 3] = a * 255; }
+    }
+  },
+  legend(sel) {
+    if (CM.st.mode === 'score') return `<div class="row">${glyph({ id: 'sc' }, 1)}<span class="nm">Combined score</span><span class="rg">0→100</span></div>
+      <div class="fn">Larger dots = higher score of ${sel.map(l => l.name.toLowerCase()).join(', ')}.</div>`;
+    return sel.map((l, i) => `<div class="row">${glyph(l, i)}<span class="nm">${l.name}</span><span class="rg">${CM.rangeLabel(l)}</span></div>`).join('')
+      + '<div class="fn">Larger dot = worse. Each hazard keeps its own screen angle, so overlaps stay readable.</div>';
+  },
+});
+</script>
+</body>
+</html>

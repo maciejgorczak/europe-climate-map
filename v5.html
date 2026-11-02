@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Climate Risk - Field Dossier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="app/core.css">
+<style>
+#dossier { position: absolute; z-index: 800; left: 324px; top: 12px; width: 318px; max-height: calc(100% - 24px); overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--line); padding: 12px 14px 14px; scrollbar-width: thin; }
+#dossier:empty { display: none; }
+.dh { border-bottom: 2px solid var(--line-strong); padding-bottom: 8px; margin-bottom: 8px; }
+.dh h2 { font-size: 19px; font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
+.dh .vs { color: var(--ink-muted); font-weight: 400; }
+.dh .ll { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; color: var(--ink-muted); margin-top: 2px; }
+.dh .acts { display: flex; gap: 4px; margin-top: 8px; }
+.sc { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+.sc div { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); }
+.sc b { display: block; font: 500 22px/1.1 var(--font); letter-spacing: -.02em; color: var(--ink); text-transform: none; }
+.sc b small { font: 400 11px var(--mono); color: var(--ink-muted); margin-left: 4px; }
+.hr { padding: 7px 0 5px; border-bottom: 1px solid var(--line); }
+.hr .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.hr .nm { font-size: 12.5px; }
+.hr .nm small { font-family: var(--mono); font-size: 9px; color: var(--ink-muted); margin-left: 4px; }
+.hr .vals { font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft); white-space: nowrap; }
+.hr svg { display: block; width: 100%; height: 16px; margin-top: 3px; overflow: visible; }
+.hr.dim .nm { color: var(--ink-soft); }
+.key { display: flex; gap: 12px; font-family: var(--mono); font-size: 9.5px; color: var(--ink-muted); margin: 8px 0 2px; align-items: center; }
+.key svg { width: 10px; height: 10px; vertical-align: -1px; margin-right: 3px; }
+.dossier-more summary { font: 500 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-muted); padding: 8px 0 2px; }
+@media (max-width: 760px) { #dossier { left: 12px; right: 12px; top: auto; bottom: 56px; width: auto; max-height: 45%; } }
+</style>
+</head>
+<body>
+<div id="app"><aside id="panel"></aside><div id="map"></div></div>
+<div id="legend"></div>
+<div id="dossier"></div>
+<div id="banner">This map needs a small local web server. Double-click <b>start.command</b> in the map folder.</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/layers.js"></script><script src="data/cities.js"></script><script src="data/base.js"></script>
+<script src="app/core.js"></script>
+<script>
+/* 5 - Field dossier. The map stays quiet: one ink tone for the score and a single olive line around the
+   watch zone (score 60+). The work happens in the dossier: every hazard of the clicked place as a small
+   range scale - today, 2050 moderate, 2050 high - and an A/B mode to set two candidate places side by side. */
+const WATCH = .6;
+let B = null, A = null; // B = current place, A = pinned place
+const mk = {
+  h: (x, y, c) => `<rect x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" fill="var(--bg)" stroke="${c}" stroke-width="1.3"/>`,
+  m: (x, y, c) => `<rect x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" fill="${c}"/>`,
+  x: (x, y, c) => `<path d="M${x} ${y - 4.5}L${x + 4.5} ${y + 3.5}H${x - 4.5}Z" fill="${c}"/>`,
+};
+function strip(l, places) {
+  // x = severity 0..1 across the row; one track per place (A muted above B)
+  const W = 290, rows = places.length, H = 8 + rows * 9;
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px">`;
+  s += [0, .5, 1].map(t => `<line x1="${4 + t * (W - 8)}" x2="${4 + t * (W - 8)}" y1="0" y2="${H}" stroke="var(--line)" stroke-width="1"/>`).join('');
+  places.forEach((P, k) => {
+    const y = 6 + k * 9, c = places.length > 1 && k === 0 ? 'var(--ink-muted)' : 'var(--ink)';
+    const xs = ['h', 'm', 'x'].map(p => { const v = P.V[l.id + p]; return CM.ok(v) ? 4 + CM.sev(l, v) * (W - 8) : null; });
+    const real = xs.filter(v => v !== null);
+    if (real.length > 1) s += `<line x1="${Math.min(...real)}" x2="${Math.max(...real)}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.3"/>`;
+    ['h', 'm', 'x'].forEach((p, i) => { if (xs[i] !== null) s += mk[p](xs[i], y, c); });
+  });
+  return s + '</svg>';
+}
+const vals = (l, P) => ['h', 'm', 'x'].map(p => CM.show(l, P.V[l.id + p])).join(' · ') + (l.u ? ' ' + l.u : '');
+function render() {
+  const el = document.getElementById('dossier');
+  if (!B) { el.innerHTML = ''; return; }
+  const places = A && A !== B ? [A, B] : [B], sel = CM.selData(), rest = CM.DATA.filter(l => !CM.st.on.has(l.id));
+  const sc = P => ['h', 'm', 'x'].map(p => CM.score(Object.fromEntries(CM.DATA.map(l => [l.id, P.V[l.id + (CM.ENC_HAS(l, p) ? p : p === 'h' ? 'm' : 'h')]]))));
+  const row = (l, dim) => `<div class="hr ${dim ? 'dim' : ''}"><div class="top"><span class="nm">${l.name}<small>${l.res}</small></span>
+    <span class="vals">${places.map(P => vals(l, P)).join('<br>')}</span></div>${strip(l, places)}</div>`;
+  const head = places.length > 1
+    ? `<h2>${A.name} <span class="vs">vs</span> ${B.name}</h2><div class="ll">A muted, B ink</div>`
+    : `<h2>${B.name}</h2><div class="ll">${B.lat.toFixed(3)}°N ${B.lng.toFixed(3)}°E</div>`;
+  const S = places.map(sc);
+  el.innerHTML = `<div class="dh">${head}<div class="acts">
+      ${A === B ? '<button class="chip on" data-act="unpin">Pinned as A</button>' : `<button class="chip" data-act="pin">Pin as A</button>`}
+      ${A && A !== B ? '<button class="chip" data-act="unpin">Clear A</button>' : ''}</div></div>
+    <div class="sc">${['Today', '2050 mod', '2050 high'].map((t, i) => `<div>${t}<b>${S.map(s => CM.fmt(s[i])).join('<small>/</small>')}</b></div>`).join('')}</div>
+    <div class="key"><span><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" fill="none" stroke="var(--ink)" stroke-width="1.3"/></svg>today</span>
+      <span><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" fill="var(--ink)"/></svg>2050 mod</span>
+      <span><svg viewBox="0 0 10 10"><path d="M5 .5L9.5 8.5H.5Z" fill="var(--ink)"/></svg>2050 high</span><span>left = fine, right = severe</span></div>
+    ${sel.length ? sel.map(l => row(l)).join('') : '<p class="note">Select hazards on the left to score this place.</p>'}
+    <details class="dossier-more"><summary>Other hazards (${rest.length})</summary>${rest.map(l => row(l, true)).join('')}</details>`;
+}
+document.getElementById('dossier').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]')?.dataset.act;
+  if (a === 'pin') A = B; else if (a === 'unpin') A = null; else return;
+  render();
+});
+const ENC = window.ENC;
+CM.ENC_HAS = (l, p) => ENC[l.id].sc.includes(p);
+
+CM.start({
+  title: 'Field dossier', eyebrow: 'Climate risk 2050 · version 5', weights: 'always', coarsen: 1,
+  defaultOn: ['tx', 'tn', 'ws', 'rfs', 'cfs'],
+  paint(o, { n, combine }) {
+    const S = combine(), ink = CM.col.ink, acc = CM.col.accent;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const p = j * n + i, s = S[p];
+      if (s < 0) continue;
+      const r = i + 1 < n ? S[p + 1] : s, d = j + 1 < n ? S[p + n] : s, w = s >= WATCH;
+      if ((r >= 0 && (r >= WATCH) !== w) || (d >= 0 && (d >= WATCH) !== w)) { o[p * 4] = acc[0]; o[p * 4 + 1] = acc[1]; o[p * 4 + 2] = acc[2]; o[p * 4 + 3] = 255; continue; }
+      const a = Math.min(.8, s * .9);
+      if (a > .02) { o[p * 4] = ink[0]; o[p * 4 + 1] = ink[1]; o[p * 4 + 2] = ink[2]; o[p * 4 + 3] = a * 255; }
+    }
+  },
+  legend(sel) {
+    return `<div class="scale" style="height:10px">${[.08, .27, .45, .63, .8].map(t => `<span style="background:color-mix(in srgb, var(--ink) ${t * 100}%, var(--bg))"></span>`).join('')}</div>
+      <div class="ticks"><span>0</span><span>50</span><span>100</span></div>
+      <div class="row" style="margin-top:6px"><svg class="gl" viewBox="0 0 18 12"><path d="M1 8 C5 2, 11 10, 17 4" fill="none" stroke="var(--accent)" stroke-width="1.6"/></svg><span class="nm">Watch zone</span><span class="rg">score 60+</span></div>
+      <div class="fn">Score of ${sel.map(l => l.name.toLowerCase()).join(', ')}. Click a place for its dossier, pin it, then click another to compare.</div>`;
+  },
+  after: () => render(),
+  readout: place => {
+    B = place; render();
+    // keep the clicked place visible next to the card
+    const m = document.getElementById('map').getBoundingClientRect(), edge = document.getElementById('dossier').getBoundingClientRect().right - m.left + 24;
+    const x = CM.map.latLngToContainerPoint([place.lat, place.lng]).x;
+    if (innerWidth > 760 && x < edge) CM.map.panBy([x - edge, 0]);
+  },
+});
+</script>
+</body>
+</html>

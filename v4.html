@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Climate Risk - Atlas Plates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="app/core.css">
+<style>
+.plates { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 8px; margin-top: 4px; }
+.prow { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-muted); grid-column: 1 / -1; margin: 6px 0 -4px; }
+.plate { display: grid; gap: 3px; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: var(--ink-soft); font: inherit; }
+.plate canvas { width: 100%; aspect-ratio: 64 / 88; display: block; border: 1px solid var(--line); background: var(--sea); }
+.plate.on canvas { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
+.plate .pn { font-size: 11px; line-height: 1.2; }
+.plate.on .pn { color: var(--ink); font-weight: 500; }
+.plate .pv { font-family: var(--mono); font-size: 9.5px; color: var(--ink-muted); }
+.plate.on .pv { color: var(--ink); }
+.plate:hover .pn { text-decoration: underline; text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+<div id="app"><aside id="panel"></aside><div id="map"></div></div>
+<div id="legend"></div>
+<div id="banner">This map needs a small local web server. Double-click <b>start.command</b> in the map folder.</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/layers.js"></script><script src="data/cities.js"></script><script src="data/base.js"></script>
+<script src="app/core.js"></script>
+<script>
+/* 4 - Atlas plates. The hazard list is itself the atlas: twelve plates of Europe, one per hazard, in five ink
+   steps. Click a plate to put it into the main map; click the map and a crosshair plus the local value
+   appears on every plate, so one glance shows a place's whole profile. Main map: the combined score in
+   five stepped tones with hairline class edges, no gradients. */
+const TONE = [0, .16, .32, .5, .7], PTONE = [.04, .26, .46, .66, .86]; // main map, plates (small, so stronger)
+const cls = s => s < .2 ? 0 : s < .4 ? 1 : s < .6 ? 2 : s < .8 ? 3 : 4;
+const EXT = { w: -11, e: 35, n: 71, s: 35 }, Z = 4, PW = 128, PH = 176;
+const X = lon => (lon + 180) / 360 * 256 * 2 ** Z;
+const Y = lat => (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * 256 * 2 ** Z;
+let V = null; // values at the picked place
+
+async function plate(l, cv) {
+  const p = CM.per(l), T = CM.lut(l, p), ctx = cv.getContext('2d'), img = ctx.createImageData(PW, PH), o = img.data;
+  const x0 = X(EXT.w), y0 = Y(EXT.n), sx = (X(EXT.e) - x0) / PW, sy = (Y(EXT.s) - y0) / PH;
+  const tiles = {};
+  await Promise.all([7, 8, 9].flatMap(tx => [3, 4, 5, 6].map(async ty => { tiles[tx + '/' + ty] = await CM.px(CM.url(l, p, Z, tx, ty)); })));
+  const ink = CM.col.ink, land = CM.col.bg;
+  for (let j = 0; j < PH; j++) for (let i = 0; i < PW; i++) {
+    const gx = x0 + (i + .5) * sx, gy = y0 + (j + .5) * sy, d = tiles[Math.floor(gx / 256) + '/' + Math.floor(gy / 256)];
+    const c = d ? d[Math.floor(gy % 256) * 256 + Math.floor(gx % 256)] : 0, q = (j * PW + i) * 4;
+    if (!c) continue;
+    const t = PTONE[cls(T[c])];
+    for (let k = 0; k < 3; k++) o[q + k] = land[k] * (1 - t) + ink[k] * t;
+    o[q + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  if (CM.st.pick) { // crosshair at the picked place
+    const px = (X(CM.st.pick.lng) - x0) / sx, py = (Y(CM.st.pick.lat) - y0) / sy;
+    ctx.strokeStyle = CM.col.accentHex; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px - 9, py); ctx.lineTo(px - 3, py); ctx.moveTo(px + 3, py); ctx.lineTo(px + 9, py);
+    ctx.moveTo(px, py - 9); ctx.lineTo(px, py - 3); ctx.moveTo(px, py + 3); ctx.lineTo(px, py + 9); ctx.stroke();
+  }
+}
+let lastPeriod = null;
+function plates(force) {
+  if (!force && lastPeriod === CM.st.period) return;
+  lastPeriod = CM.st.period;
+  document.querySelectorAll('.plate').forEach(el => {
+    const l = CM.DATA.find(d => d.id === el.dataset.id);
+    plate(l, el.querySelector('canvas'));
+    el.querySelector('.pv').textContent = V ? CM.withUnit(l, V[l.id + CM.per(l)]) : l.res;
+  });
+}
+
+CM.start({
+  title: 'Atlas plates', eyebrow: 'Climate risk 2050 \u00b7 version 4', weights: false, coarsen: 1,
+  defaultOn: ['tx', 'tn', 'ws', 'pra'],
+  hazardsHTML: () => `<div class="pick note" id="pickname">Click the map: every plate shows its value there.</div><div class="plates">${['Heat', 'Water', 'Floods'].map(g => `<div class="prow">${g}</div>` + CM.DATA.filter(l => l.g === g).map(l =>
+    `<button class="plate" data-id="${l.id}" title="${l.name}: ${l.unit}"><canvas width="${PW}" height="${PH}"></canvas><span class="pn">${l.name}</span><span class="pv">${l.res}</span></button>`).join('')).join('')}</div>`,
+  paint(o, { n, combine }) {
+    const S = combine(), ink = CM.col.ink;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const p = j * n + i, s = S[p];
+      if (s < 0) continue;
+      const k = cls(s), r = i + 1 < n ? S[p + 1] : s, d = j + 1 < n ? S[p + n] : s;
+      let a = TONE[k];
+      if ((r >= 0 && cls(r) !== k) || (d >= 0 && cls(d) !== k)) a = Math.max(a, .55); // hairline class edge
+      if (a) { o[p * 4] = ink[0]; o[p * 4 + 1] = ink[1]; o[p * 4 + 2] = ink[2]; o[p * 4 + 3] = a * 255; }
+    }
+  },
+  legend(sel) {
+    return `<div class="scale" style="height:10px">${TONE.map(t => `<span style="background:color-mix(in srgb, var(--ink) ${t * 100}%, var(--bg))"></span>`).join('')}</div>
+      <div class="ticks">${[0, 20, 40, 60, 80, 100].map(v => `<span>${v}</span>`).join('')}</div>
+      <div class="fn">Score of ${sel.map(l => l.name.toLowerCase()).join(', ')}. Click a plate to add or remove it. Click the map to read every plate there.</div>`;
+  },
+  after: () => plates(),
+  readout: place => { V = place.V; document.getElementById('pickname').innerHTML = `<b style="color:var(--ink);font-weight:500">${place.name}</b> \u00b7 values for ${CM.PERIODS[CM.st.period].toLowerCase()}`; plates(true); },
+});
+</script>
+</body>
+</html>
