@@ -118,7 +118,13 @@ CM.start({
       <div class="fn">Score of ${sel.map(l => l.name.toLowerCase()).join(', ')}. Click a place for its dossier, pin it, then click another to compare.</div>`;
   },
   after: () => render(),
-  readout: place => { B = place; render(); },
+  readout: place => {
+    B = place; render();
+    // keep the clicked place visible next to the card
+    const m = document.getElementById('map').getBoundingClientRect(), edge = document.getElementById('dossier').getBoundingClientRect().right - m.left + 24;
+    const x = CM.map.latLngToContainerPoint([place.lat, place.lng]).x;
+    if (innerWidth > 760 && x < edge) CM.map.panBy([x - edge, 0]);
+  },
 });
 </script>
 </body>

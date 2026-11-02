@@ -1,24 +1,14 @@
-/* Shared layout for every map version. Themes only set the tokens below. */
+/* Shared layout for every map version, in the site's Field Station tokens (light and warm dark). */
 body.field {
   --bg: #e8e2d1; --bg-2: #ded7c2; --line: #c9bfa4; --line-strong: #2b2a1e;
   --ink: #2b2a1e; --ink-soft: #4a4736; --ink-muted: #605c48; --accent: #5b6a26; --on-accent: #f2eddd;
   --sea: #ded7c2; --font: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   --mono: 'IBM Plex Mono', 'SF Mono', Menlo, monospace; --radius: 0;
 }
-body.classic {
-  --bg: #fcfcfb; --bg-2: #f0efec; --line: #e4e3df; --line-strong: #c9c8c2;
-  --ink: #0b0b0b; --ink-soft: #3d3c39; --ink-muted: #7a7974; --accent: #256abf; --on-accent: #fff;
-  --sea: #f9f9f7; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --mono: 'SF Mono', Menlo, monospace; --radius: 6px;
-}
 @media (prefers-color-scheme: dark) {
   body.field {
     --bg: #20201a; --bg-2: #292921; --line: #3c3b30; --line-strong: #e8e2d1;
     --ink: #e8e2d1; --ink-soft: #c4bfa8; --ink-muted: #928d75; --accent: #a3b458; --on-accent: #20201a; --sea: #292921;
-  }
-  body.classic {
-    --bg: #1a1a19; --bg-2: #2a2a28; --line: #2e2e2c; --line-strong: #4a4a46;
-    --ink: #f0efec; --ink-soft: #c3c2b7; --ink-muted: #8f8e86; --accent: #5598e7; --sea: #0d0d0d;
   }
 }
 

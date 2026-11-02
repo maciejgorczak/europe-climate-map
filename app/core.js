@@ -22,7 +22,7 @@ const DATA = [
   { id: 'rx5', g: 'Floods', name: 'Heavy rain', res: '25 km', unit: 'change in the wettest 5 days of the year', u: '%', s: [0, 25], sign: true },
 ];
 const byId = Object.fromEntries(DATA.map(l => [l.id, l]));
-const EU = [[35.5, -11], [70.5, 34]];
+const CENTRE = [53, 14]; // middle of mapped Europe, between Berlin and Prague
 const BOX = [[33.875, -25.125], [72.125, 45.125]];
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 const LIVE = [
@@ -215,7 +215,7 @@ function refresh() {
   $('#hzhint').textContent = O.maxOn ? `up to ${O.maxOn}` : '';
   for (const o of LIVE) {
     $(`#live [data-id="${o.id}"]`).classList.toggle('on', st.on.has(o.id));
-    if (st.on.has(o.id)) live[o.id] = (live[o.id] || o.lyr(O.theme === 'field' ? 'ink-tiles' : '')).addTo(map);
+    if (st.on.has(o.id)) live[o.id] = (live[o.id] || o.lyr(O.inkOverlays === false ? '' : 'ink-tiles')).addTo(map);
     else if (live[o.id]) map.removeLayer(live[o.id]);
   }
   legend(); ranking();
@@ -251,10 +251,8 @@ function ranking() {
 let pin;
 async function pick(lat, lng, title) {
   st.pick = { lat, lng };
-  if (O.theme === 'field') {
-    const icon = L.divIcon({ className: 'pin', iconSize: [0, 0], html: `<svg width="22" height="22"><path d="M11 0v8M11 14v8M0 11h8M14 11h8" stroke="${O.pinColor || 'var(--accent)'}" stroke-width="1.5"/><rect x="8.5" y="8.5" width="5" height="5" fill="none" stroke="${O.pinColor || 'var(--accent)'}" stroke-width="1.5"/></svg>` });
-    pin ? pin.setLatLng([lat, lng]) : (pin = L.marker([lat, lng], { icon, pane: 'pin', interactive: false }).addTo(map));
-  }
+  const icon = L.divIcon({ className: 'pin', iconSize: [0, 0], html: '<svg width="22" height="22"><path d="M11 0v8M11 14v8M0 11h8M14 11h8" stroke="var(--accent)" stroke-width="1.5"/><rect x="8.5" y="8.5" width="5" height="5" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg>' });
+  pin ? pin.setLatLng([lat, lng]) : (pin = L.marker([lat, lng], { icon, pane: 'pin', interactive: false }).addTo(map));
   const near = nearestCity(lat, lng);
   const name = title || (near ? 'Near ' + near[0] + ', ' + near[1] : 'Selected place');
   const pop = O.readout ? null : L.popup({ maxWidth: 330, autoPanPadding: [20, 20] }).setLatLng([lat, lng]).setContent('<div class="pop">Reading values…</div>').openOn(map);
@@ -273,12 +271,6 @@ function goCity(c) { map.flyTo([c[3], c[4]], 9, { duration: .8 }); map.once('mov
 
 // ---------- base map ----------
 function baseMap() {
-  if (O.theme !== 'field') {
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    const esri = s => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${dark ? 'Dark' : 'Light'}_Gray_${s}/MapServer/tile/{z}/{y}/{x}`;
-    L.tileLayer(esri('Base'), { attribution: 'Base map &copy; Esri, HERE, Garmin, OpenStreetMap', maxNativeZoom: 16 }).addTo(map);
-    return L.tileLayer(esri('Reference'), { pane: 'labels', maxNativeZoom: 16 });
-  }
   const B = window.BASE, r = L.canvas({ pane: 'land', padding: .5 }), rb = L.canvas({ pane: 'borders', padding: .5 });
   L.geoJSON(B.land, { renderer: r, interactive: false, style: { stroke: false, fillColor: col.bgHex, fillOpacity: 1 } }).addTo(map);
   L.geoJSON(B.lakes, { renderer: r, interactive: false, style: { stroke: false, fillColor: col.seaHex, fillOpacity: 1 } }).addTo(map);
@@ -308,9 +300,18 @@ function baseMap() {
 }
 
 // ---------- start ----------
+/* Zoom that shows Europe around CENTRE. Portrait screens fit Europe's width (-12..42 E). Landscape screens are
+   height-limited, so take the middle between "full width" and "full height" (35..70 N): the far north and
+   south crop a little, but Europe fills the screen and no Asia shows. */
+function startZoom() {
+  const { x, y } = map.getSize(), merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+  const zw = Math.log2(x / 256 * 360 / 54), zh = Math.log2(y / 256 * 2 * Math.PI / (merc(70) - merc(35)));
+  return Math.ceil((zh < zw ? (zw + zh) / 2 : zw) * 4) / 4;
+}
+
 function start(opts) {
-  O = Object.assign({ theme: 'field', title: 'Climate risk 2050', defaultOn: ['tx', 'ws', 'rfs'], weights: 'mode' }, opts);
-  document.body.classList.add(O.theme);
+  O = Object.assign({ title: 'Climate risk 2050', defaultOn: ['tx', 'ws', 'rfs'], weights: 'mode' }, opts);
+  document.body.classList.add('field');
   st.mode = O.modes ? O.modes[0].id : null;
   O.defaultOn.forEach(id => st.on.add(id));
   const cs = getComputedStyle(document.body);
@@ -324,9 +325,7 @@ function start(opts) {
     map.createPane(n).style.zIndex = z;
     if (n !== 'hazard') map.getPane(n).style.pointerEvents = 'none';
   }
-  map.fitBounds(EU);
-  const e = map.getBounds().getEast(); // a wide screen shows more than Europe: put the spare width on the Atlantic, not Asia
-  if (e > 42) map.setView([map.getCenter().lat, map.getCenter().lng - (e - 42)], map.getZoom(), { animate: false });
+  map.setView(CENTRE, startZoom(), { animate: false });
   const names = baseMap().addTo(map);
   hz = new Hazards({ pane: 'hazard', bounds: BOX, keepBuffer: 1, updateWhenZooming: false, opacity: O.opacity || 1,
     attribution: 'CHELSA, World Bank CCKP, WRI Aqueduct, JRC' }).addTo(map);

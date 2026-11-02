@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Europe Climate Risk 2050</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="app/core.css">
 </head>
@@ -14,9 +16,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data/layers.js"></script>
 <script src="data/cities.js"></script>
+<script src="data/base.js"></script>
 <script src="app/core.js"></script>
 <script>
-// Classic: every hazard in its own colour, or one weighted score.
+// Classic: every hazard in its own colour, or one weighted score, on the site's sand base map.
 const COL = { tx: '#d7301f', tn: '#c51b7d', hd35: '#7f0000', tr: '#6a0177', ws: '#8c510a', pra: '#d69e00', spei: '#e06c00',
   cdd: '#9c6b30', rfs: '#2171b5', rfc: '#08306b', cfs: '#6a51a3', rx5: '#1d91c0' };
 const SEQ = ['#fdeee4', '#fbd0b9', '#f6a582', '#ee7650', '#d84a2f', '#b02a1f', '#7a1414'];
@@ -28,13 +31,14 @@ const RAMP = Array.from({ length: 101 }, (_, i) => {
 const sw = c => `<svg class="gl" viewBox="0 0 18 12"><rect x="3" y="1" width="12" height="10" fill="${c}"/></svg>`;
 
 CM.start({
-  theme: 'classic', title: 'Climate risk, 2050',
+  title: 'Climate risk, 2050', inkOverlays: false,
   modes: [{ id: 'own', label: 'Own colours' }, { id: 'score', label: 'One score' }],
   glyph: l => sw(COL[l.id]),
   paint(o, { sel, F, n, combine }) {
     if (CM.st.mode === 'score') {
       const S = combine();
-      for (let p = 0; p < n * n; p++) if (S[p] >= 0) { const c = RAMP[Math.round(S[p] * 100)]; o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; o[p * 4 + 3] = 210; }
+      for (let p = 0; p < n * n; p++) if (S[p] >= 0) { // low scores fade into the sand instead of painting it pale
+        const c = RAMP[Math.round(S[p] * 100)]; o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; o[p * 4 + 3] = 40 + 185 * S[p]; }
       return;
     }
     const C = sel.map(l => hex(COL[l.id]));
