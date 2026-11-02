@@ -67,6 +67,8 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border: 0; backgr
 .chip.on { color: var(--bg); background: var(--ink); border-color: var(--ink); }
 
 .filters { display: grid; grid-template-columns: 1fr 96px; gap: 6px; margin-bottom: 4px; }
+.rankhead { display: grid; grid-template-columns: 18px 1fr auto; gap: 6px; padding: 8px 0 4px; border-bottom: 1px solid var(--ink);
+  font: 500 9.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-muted); }
 ol.rank { list-style: none; counter-reset: n; }
 ol.rank li { counter-increment: n; display: grid; grid-template-columns: 18px 1fr auto; gap: 6px; align-items: baseline;
   padding: 5px 0; border-bottom: 1px solid var(--line); cursor: pointer; }

@@ -179,6 +179,7 @@ function panelHTML() {
     <p class="note" style="margin:0 0 10px">Cities with the lowest score for the hazards you selected.</p>
     <div class="filters"><select id="country" aria-label="Country"><option value="">All countries</option></select>
     <select id="minpop" aria-label="Population"><option value="50000">50k+</option><option value="100000" selected>100k+</option><option value="250000">250k+</option><option value="1000000">1M+</option></select></div>
+    <div class="rankhead" aria-hidden="true"><span></span><span>City</span><span>Score</span></div>
     <ol class="rank" id="rank"></ol>
   </section>
   <section class="tab about" data-t="about" hidden>
@@ -239,7 +240,7 @@ function ranking() {
   if (!selData().length) { el.innerHTML = '<li class="empty">Select a hazard to rank cities.</li>'; return; }
   const list = CITIES.map((c, i) => { const v = Object.fromEntries(selData().map(l => [l.id, cityVal(l, i)])); return { c, i, s: score(v), r: score(v, true) }; })
     .filter(x => x.c[2] >= st.minPop && (!st.country || x.c[1] === st.country) && ok(x.s))
-    .sort((a, b) => a.s - b.s || a.r - b.r).slice(0, O.rankN || 8);
+    .sort((a, b) => a.s - b.s || a.r - b.r).slice(0, 15);
   if (!list.length) { el.innerHTML = '<li class="empty">No city this big here. Lower the population.</li>'; return; }
   el.innerHTML = list.map(({ c, i, s }) => {
     const worst = selData().filter(l => ok(cityVal(l, i)) && sev(l, cityVal(l, i)) >= .4).map(l => l.name);

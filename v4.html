@@ -74,7 +74,7 @@ function plates(force) {
 }
 
 CM.start({
-  title: 'Atlas plates', eyebrow: 'Climate risk 2050 \u00b7 version 4', weights: false, rankN: 8, coarsen: 1,
+  title: 'Atlas plates', eyebrow: 'Climate risk 2050 \u00b7 version 4', weights: false, coarsen: 1,
   defaultOn: ['tx', 'tn', 'ws', 'pra'],
   hazardsHTML: () => `<div class="pick note" id="pickname">Click the map: every plate shows its value there.</div><div class="plates">${['Heat', 'Water', 'Floods'].map(g => `<div class="prow">${g}</div>` + CM.DATA.filter(l => l.g === g).map(l =>
     `<button class="plate" data-id="${l.id}" title="${l.name}: ${l.unit}"><canvas width="${PW}" height="${PH}"></canvas><span class="pn">${l.name}</span><span class="pv">${l.res}</span></button>`).join('')).join('')}</div>`,
