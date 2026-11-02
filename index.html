@@ -5,446 +5,58 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Europe Climate Risk 2050</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<style>
-:root {
-  --page: #f9f9f7; --surface: #fcfcfb; --line: #e4e3df; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8984;
-  --accent: #256abf; --accent-soft: #e3eefb; --chip: #f0efec;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --page: #0d0d0d; --surface: #1a1a19; --line: #2e2e2c; --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #8f8e86;
-    --accent: #5598e7; --accent-soft: #1d2a3b; --chip: #2a2a28; }
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--page); color: var(--ink);
-  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-#app { display: flex; height: 100%; }
-#panel { width: 370px; flex: none; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--line); padding: 16px 16px 24px; }
-#map { flex: 1; background: var(--page); }
-h1 { font-size: 18px; margin: 0 0 2px; letter-spacing: -.01em; }
-.sub { color: var(--ink-2); margin: 0 0 14px; }
-h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 18px 0 8px; font-weight: 600; }
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.seg button { border: 0; background: transparent; color: var(--ink-2); padding: 7px 4px; font: inherit; cursor: pointer; line-height: 1.2; }
-.seg button + button { border-left: 1px solid var(--line); }
-.seg button.on { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
-.seg small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 400; }
-.note { color: var(--ink-2); font-size: 12px; margin: 6px 0 0; }
-.grp { font-size: 11.5px; color: var(--ink-3); margin: 10px 0 2px; }
-.opt { display: grid; grid-template-columns: 16px 12px 1fr auto; gap: 4px 8px; align-items: center; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
-.opt:hover { background: var(--chip); }
-.opt input { margin: 0; accent-color: var(--accent); }
-.opt .badge { font-size: 10.5px; color: var(--ink-3); border: 1px solid var(--line); border-radius: 10px; padding: 0 6px; white-space: nowrap; }
-.sw { width: 12px; height: 12px; border-radius: 3px; }
-.wt { grid-column: 3 / 5; display: none; grid-template-columns: 52px 1fr 28px; gap: 6px; align-items: center; color: var(--ink-3); font-size: 11.5px; }
-.combined .opt.on .wt { display: grid; }
-.wt output { text-align: right; font-variant-numeric: tabular-nums; }
-.row { display: flex; align-items: center; gap: 8px; }
-input[type=range] { width: 100%; accent-color: var(--accent); }
-select, input[type=search] { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; }
-input[type=search] { width: 100%; }
-ol#top { margin: 6px 0 0; padding: 0; list-style: none; counter-reset: n; }
-ol#top li { counter-increment: n; display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; padding: 5px 6px; border-radius: 6px; cursor: pointer; align-items: baseline; }
-ol#top li:hover { background: var(--chip); }
-ol#top li::before { content: counter(n); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-ol#top b { font-weight: 600; }
-ol#top .c { color: var(--ink-3); font-size: 11.5px; display: block; }
-ol#top .s { font-variant-numeric: tabular-nums; font-weight: 600; }
-details { margin-top: 18px; }
-details summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
-details p, details li { color: var(--ink-2); font-size: 12px; }
-details ul { padding-left: 18px; }
-a { color: var(--accent); }
-#legend { position: absolute; right: 12px; bottom: 26px; z-index: 800; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
-  border-radius: 10px; padding: 10px 12px; width: 310px; max-height: 60%; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
-#legend .t { font-weight: 600; margin-bottom: 6px; }
-#legend .it { margin: 6px 0 8px; }
-#legend .nm { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
-#legend .nm span:last-child { color: var(--ink-3); font-size: 11px; }
-#legend .bar { height: 8px; border-radius: 3px; margin: 3px 0 1px; }
-#legend .ticks { display: flex; justify-content: space-between; gap: 6px; color: var(--ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
-#legend .warn { color: var(--ink-2); font-size: 11.5px; margin-top: 4px; }
-#legend .empty { color: var(--ink-2); }
-#banner { display: none; position: absolute; z-index: 1000; left: 50%; top: 12px; transform: translateX(-50%); max-width: 520px;
-  background: #fff4d6; color: #3d2c00; border: 1px solid #e8c56a; border-radius: 8px; padding: 10px 14px; }
-.leaflet-container { font: inherit; background: var(--page); }
-.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--ink); }
-.leaflet-popup-content { margin: 12px 14px; width: 400px !important; }
-.pop h3 { margin: 0 0 2px; font-size: 14px; }
-.pop .ll { color: var(--ink-3); font-size: 11px; margin-bottom: 8px; }
-.pop table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
-.pop th { text-align: right; font-weight: 600; color: var(--ink-3); font-size: 10.5px; padding: 0 0 4px 6px; }
-.pop th:first-child { text-align: left; padding-left: 0; }
-.pop td { text-align: right; padding: 3px 0 3px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
-.pop td:first-child { text-align: left; padding-left: 0; color: var(--ink-2); white-space: normal; }
-.pop td small { color: var(--ink-3); font-size: 10px; }
-.pop tr.sel td:first-child { color: var(--ink); font-weight: 600; }
-.pop tr.g td { color: var(--ink-3); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; border-top: 0; padding-top: 8px; }
-.pop .drv { margin-top: 8px; color: var(--ink-2); font-size: 12px; }
-.leaflet-control-attribution { font-size: 10px; }
-#toggle { display: none; }
-@media (max-width: 760px) {
-  #panel { position: absolute; z-index: 900; inset: auto 0 0 0; width: 100%; max-height: 62%; border-right: 0;
-    border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; transform: translateY(calc(100% - 52px)); transition: transform .2s; }
-  #panel.open { transform: none; }
-  #toggle { display: block; width: 100%; border: 0; background: none; color: var(--ink); font: 600 14px/1 inherit; padding: 4px 0 14px; }
-  #legend { left: 56px; right: 12px; width: auto; top: 10px; bottom: auto; max-height: 38%; padding: 8px 10px; }
-  .leaflet-popup-content { width: 290px !important; }
-}
-</style>
+<link rel="stylesheet" href="app/core.css">
 </head>
 <body>
-<div id="app">
-  <aside id="panel">
-    <button id="toggle">Layers and settings</button>
-    <h1>Europe climate risk, 2050</h1>
-    <p class="sub">Select one or more hazards. Click the map to see every value for that place.</p>
-
-    <h2>Time and scenario</h2>
-    <div class="seg" id="period">
-      <button data-p="h">Today<small>recent climate</small></button>
-      <button data-p="m" class="on">2050 moderate<small>SSP2-4.5</small></button>
-      <button data-p="x">2050 high<small>SSP5-8.5</small></button>
-    </div>
-    <p class="note">"2050" is the 2040-2059 average. Moderate: about 2 °C global warming. High: about 2.4 °C.</p>
-
-    <h2>Show as</h2>
-    <div class="seg" id="mode">
-      <button data-m="own" class="on">Each hazard in its own colour</button>
-      <button data-m="combined">One combined score</button>
-    </div>
-    <p class="note" id="modenote"></p>
-
-    <h2>Hazards</h2>
-    <div id="layers"></div>
-    <div class="row" style="margin-top:8px"><span style="color:var(--ink-2)">Opacity</span><input type="range" id="opacity" min="0.2" max="1" step="0.05" value="0.85"></div>
-    <label class="row" style="margin-top:6px;color:var(--ink-2)"><input type="checkbox" id="labels" checked> Place names</label>
-
-    <h2>Lowest risk for the selected hazards</h2>
-    <div class="row"><span style="color:var(--ink-2)">Population at least</span>
-      <select id="minpop"><option value="50000">50 000</option><option value="100000" selected>100 000</option>
-      <option value="250000">250 000</option><option value="1000000">1 million</option></select></div>
-    <div class="row" style="margin-top:6px"><span style="color:var(--ink-2)">Country</span>
-      <select id="country"><option value="">All countries</option></select></div>
-    <ol id="top"></ol>
-    <h2>Find a city</h2>
-    <input type="search" id="search" list="citylist" placeholder="Type a city name">
-    <datalist id="citylist"></datalist>
-
-    <details>
-      <summary>How the colours and the score work</summary>
-      <p>Each hazard becomes a number from 0 (no concern) to 1 (severe):</p>
-      <ul id="thresholds"></ul>
-      <p><b>Own colour:</b> the stronger the hazard, the stronger its colour. Where hazards overlap, the colours mix.
-      <b>Combined score:</b> the weighted average of the selected hazards, times 100.</p>
-      <p>The thresholds and weights are my choice, not a scientific standard. Use them to find places to look at, then check each value.</p>
-    </details>
-    <details>
-      <summary>Data sources</summary>
-      <ul>
-        <li><b>Summer heat, warm nights, yearly rainfall (1 km):</b> CHELSA v2.1 climate for 1981-2010 at 30 arc-seconds. For 2050, I add the change from the World Bank CMIP6 data (median of about 25 models, 2040-2059 minus 1995-2014), smoothly interpolated. This is the standard "delta" method.</li>
-        <li><b>Very hot days, tropical nights, drought, dry spells, heavy rain (25 km):</b> World Bank Climate Change Knowledge Portal, CMIP6, bias-corrected and downscaled (NASA NEX-GDDP), 0.25° grid.</li>
-        <li><b>Water stress (per river basin):</b> WRI Aqueduct 4.0. Today = baseline. Moderate map = "business as usual" (SSP3-7.0), high map = "pessimistic" (SSP5-8.5). Aqueduct has no SSP2-4.5 run.</li>
-        <li><b>River flood zone (1 km) and depth (90 m):</b> Copernicus EMS / JRC river flood hazard maps for Europe v3.1, 100-year flood, present-day climate. Lakes removed.</li>
-        <li><b>River flood trend (5 km):</b> JRC PESETA IV (Mentaschi et al. 2020). Change of the 100-year river flow at 2 °C (moderate) and 2.4 °C (high) warming. Large rivers only (50 m³/s or more).</li>
-        <li><b>Coastal flood zone (1 km) and depth (450 m):</b> my calculation. Land below the local 100-year extreme sea level (JRC LISCoAsT, median, includes sea level rise, tide, surge and waves) that connects to the sea. Elevation: NOAA ETOPO 2022.</li>
-        <li><b>Forest loss:</b> Hansen / University of Maryland via Global Forest Watch. <b>Burnt areas:</b> EFFIS. Both are live services.</li>
-        <li><b>Cities:</b> Natural Earth. <b>Base map:</b> Esri World Gray Canvas.</li>
-      </ul>
-      <p>Each source keeps its own licence and asks for credit (for example WRI Aqueduct: CC BY 4.0, JRC flood maps: ODbL 1.0).
-      If you reuse this map, keep these credits. Code and build steps: <a href="https://github.com/maciejgorczak/europe-climate-map">GitHub</a>.</p>
-    </details>
-    <details>
-      <summary>Limits - read before you decide</summary>
-      <ul>
-        <li>Only the layers marked "1 km" or finer have local detail. The 25 km layers average coast and inland, valley and mountain.</li>
-        <li>The 1 km "today" climate is 1981-2010. The 2050 change is measured from 1995-2014, so 2050 heat values are probably about 0.3 °C too low.</li>
-        <li>Flood maps ignore dikes and flood walls. The Netherlands shows as mostly flooded, but strong defences protect it. The coastal model is simple and can overstate flooding in flat areas.</li>
-        <li>Climate values are the median of many models. Real outcomes can be higher or lower.</li>
-        <li>Not included: future wildfire danger, storms, landslides, city heat islands, air quality, insurance cost, economy and politics.</li>
-      </ul>
-    </details>
-  </aside>
-  <div id="map"></div>
-</div>
+<div id="app"><aside id="panel"></aside><div id="map"></div></div>
 <div id="legend"></div>
-<div id="banner">This map must run from a small local web server. Close this tab and double-click <b>start.command</b> in the map folder.</div>
-
+<div id="banner">This map needs a small local web server. Double-click <b>start.command</b> in the map folder.</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data/layers.js"></script>
 <script src="data/cities.js"></script>
+<script src="app/core.js"></script>
 <script>
-const ENC = window.ENC, CITIES = window.CITIES, CV = window.CV;
-const clamp = x => Math.max(0, Math.min(1, x));
-const ok = x => x !== null && x !== undefined && !Number.isNaN(x);
-const fmt = v => !ok(v) ? '-' : Math.abs(v) >= 10 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
+// Classic: every hazard in its own colour, or one weighted score.
+const COL = { tx: '#d7301f', tn: '#c51b7d', hd35: '#7f0000', tr: '#6a0177', ws: '#8c510a', pra: '#d69e00', spei: '#e06c00',
+  cdd: '#9c6b30', rfs: '#2171b5', rfc: '#08306b', cfs: '#6a51a3', rx5: '#1d91c0' };
+const SEQ = ['#fdeee4', '#fbd0b9', '#f6a582', '#ee7650', '#d84a2f', '#b02a1f', '#7a1414'];
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const RAMP = Array.from({ length: 101 }, (_, i) => {
+  const s = SEQ.map(hex), t = i / 100 * (s.length - 1), a = Math.floor(t), b = Math.min(a + 1, s.length - 1);
+  return s[a].map((c, j) => Math.round(c + (s[b][j] - c) * (t - a)));
+});
+const sw = c => `<svg class="gl" viewBox="0 0 18 12"><rect x="3" y="1" width="12" height="10" fill="${c}"/></svg>`;
 
-// data layers: drawn from 1..255 grey-value tiles. s = [value with no concern, value that is severe]. nd0: no data counts as 0.
-const DATA = [
-  { id: 'tx', g: 'Heat', name: 'Summer heat', res: '1 km', unit: '°C, average daily high in the hottest month', short: '°C', s: [26, 36], col: '#d7301f' },
-  { id: 'tn', g: 'Heat', name: 'Warm summer nights', res: '1 km', unit: '°C, average night low in the hottest month', short: '°C', s: [14, 22], col: '#c51b7d' },
-  { id: 'hd35', g: 'Heat', name: 'Very hot days', res: '25 km', unit: 'days per year above 35 °C', short: 'd', s: [0, 40], col: '#7f0000' },
-  { id: 'tr', g: 'Heat', name: 'Tropical nights', res: '25 km', unit: 'nights per year above 20 °C', short: 'n', s: [0, 60], col: '#6a0177' },
-  { id: 'ws', g: 'Water', name: 'Water stress', res: 'river basin', unit: 'score: 1 low-medium, 2 medium-high, 3 high, 4-5 extremely high', short: '', s: [1, 5], col: '#8c510a' },
-  { id: 'pra', g: 'Water', name: 'Low yearly rainfall', res: '1 km', unit: 'mm per year (less = drier)', short: 'mm', s: [700, 300], col: '#d69e00' },
-  { id: 'spei', g: 'Water', name: 'Drought', res: '25 km', unit: 'SPEI-12, below 0 = drier than 1995-2014', short: '', s: [0, -1.2], col: '#e06c00' },
-  { id: 'cdd', g: 'Water', name: 'Longest dry spell', res: '25 km', unit: 'days in a row with less than 1 mm rain', short: 'd', s: [20, 80], col: '#9c6b30' },
-  { id: 'rfs', g: 'Floods', name: 'River flood zone', res: '1 km', unit: '% of land in the 100-year river flood zone', short: '%', s: [0, 50], col: '#2171b5' },
-  { id: 'rfc', g: 'Floods', name: 'River flood trend', res: '5 km', unit: '% change of the 100-year river flow', short: '%', s: [0, 40], col: '#08306b', nd0: true, sign: true },
-  { id: 'cfs', g: 'Floods', name: 'Coastal flood zone', res: '1 km', unit: '% of land below the 100-year sea flood level, no dikes', short: '%', s: [0, 50], col: '#6a51a3' },
-  { id: 'rx5', g: 'Floods', name: 'Heavy rain change', res: '25 km', unit: '% change in the wettest 5 days of the year', short: '%', s: [0, 25], col: '#1d91c0', sign: true },
-];
-const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-const box = [[33.875, -25.125], [72.125, 45.125]];
-const LIVE = [
-  { id: 'riverdepth', g: 'Floods', name: 'River flood depth', res: '90 m', col: '#4292c6', unit: '100-year flood, today. Light = up to 0.5 m, dark = over 2 m',
-    lyr: () => L.tileLayer('tiles/river/{z}/{x}/{y}.png', { pane: 'detail', minNativeZoom: 4, maxNativeZoom: 10, bounds: box, errorTileUrl: BLANK, opacity: .9, attribution: 'River floods: Copernicus EMS / JRC' }) },
-  { id: 'coastdepth', g: 'Floods', name: 'Coastal flood depth 2050', res: '450 m', col: '#8032aa', unit: '100-year sea flood, high scenario, no dikes. Light = up to 0.5 m, dark = over 2 m',
-    lyr: () => L.tileLayer('tiles/coast/{z}/{x}/{y}.png', { pane: 'detail', minNativeZoom: 4, maxNativeZoom: 9, bounds: box, errorTileUrl: BLANK, opacity: .85, attribution: 'Coast: JRC LISCoAsT, NOAA ETOPO 2022' }) },
-  { id: 'forest', g: 'Land and fire', name: 'Forest loss 2001-2024', res: '30 m, live', col: '#e0559b', unit: 'Tree cover lost since 2001 (Global Forest Watch)',
-    lyr: () => L.tileLayer('https://tiles.globalforestwatch.org/umd_tree_cover_loss/latest/dynamic/{z}/{x}/{y}.png', { pane: 'detail', maxNativeZoom: 12, attribution: 'Forest loss: Hansen/UMD/Google/USGS/NASA, Global Forest Watch' }) },
-  { id: 'fire', g: 'Land and fire', name: 'Burnt areas since 2000', res: 'live', col: '#2f9e23', unit: 'Wildfires mapped by satellite (EFFIS). Zoom in to see burn shapes',
-    lyr: () => L.tileLayer.wms('https://maps.effis.emergency.copernicus.eu/effis', { pane: 'detail', layers: 'modis.ba', format: 'image/png', transparent: true, version: '1.1.1', time: '2000-01-01/2026-12-31', opacity: .7, attribution: 'Burnt areas: EFFIS' }) },
-];
-const ALL = [...DATA, ...LIVE];
-DATA.forEach(l => console.assert(ENC[l.id], 'missing data for ' + l.id));
-
-const st = { period: 'm', mode: 'own', on: new Set(['tx', 'ws', 'rfs']), w: Object.fromEntries(DATA.map(l => [l.id, 1])), minPop: 100000, country: '' };
-const per = l => ENC[l.id].sc.includes(st.period) ? st.period : (st.period === 'h' ? 'm' : 'h');
-const dec = (id, c) => ENC[id].lo + (c - 1) / 254 * (ENC[id].hi - ENC[id].lo);
-const sev = (l, v) => clamp((v - l.s[0]) / (l.s[1] - l.s[0]));
-const selData = () => DATA.filter(l => st.on.has(l.id));
-const rgbOf = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-const unitOf = l => l.short === '°C' ? ' °C' : l.short === '%' ? '%' : l.short === 'mm' ? ' mm' : '';
-const tick = (l, v) => (l.sign && v > 0 ? '+' : '') + fmt(v) + unitOf(l);
-const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-const SEQ = dark ? ['#2b2523', '#4a2a22', '#73301f', '#a1381c', '#cf4a1f', '#ef7a45', '#f9b48d']
-  : ['#fdeee4', '#fbd0b9', '#f6a582', '#ee7650', '#d84a2f', '#b02a1f', '#7a1414'];
-const SEQRGB = (() => { const s = SEQ.map(rgbOf); return Array.from({ length: 101 }, (_, i) => {
-  const t = i / 100 * (s.length - 1), a = Math.floor(t), b = Math.min(a + 1, s.length - 1), f = t - a;
-  return s[a].map((c, j) => Math.round(c + (s[b][j] - c) * f)); }); })();
-
-// severity lookup per layer and code (code 0 = no data -> -1)
-const luts = {};
-function lut(l) {
-  const k = l.id + per(l);
-  return luts[k] || (luts[k] = Float32Array.from({ length: 256 }, (_, c) => c ? sev(l, dec(l.id, c)) : -1));
-}
-
-// --- tile pixels: grey value of each data tile, LRU-cached
-const cache = new Map(), scratch = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
-scratch.canvas.width = scratch.canvas.height = 256;
-function px(url) {
-  let p = cache.get(url);
-  if (p) { cache.delete(url); cache.set(url, p); return p; }
-  p = new Promise(res => {
-    const im = new Image();
-    im.onload = () => {
-      scratch.clearRect(0, 0, 256, 256); scratch.drawImage(im, 0, 0);
-      const d = scratch.getImageData(0, 0, 256, 256).data, a = new Uint8Array(65536);
-      for (let i = 0; i < 65536; i++) a[i] = d[i * 4];
-      res(a);
-    };
-    im.onerror = () => res(null); // no tile = no land data there
-    im.src = url;
-  });
-  cache.set(url, p);
-  if (cache.size > 1500) cache.delete(cache.keys().next().value);
-  return p;
-}
-const tileUrl = (l, p, z, x, y) => `tiles/data/${l.id}_${p}/${z}/${x}/${y}.png`;
-
-function paint(ctx, sel, ds) {
-  const img = ctx.createImageData(256, 256), o = img.data;
-  const L = sel.map(lut), C = sel.map(l => rgbOf(l.col)), w = sel.map(l => st.w[l.id]), nd0 = sel.map(l => !!l.nd0);
-  const onlyNd0 = nd0.every(Boolean), own = st.mode === 'own';
-  for (let p = 0; p < 65536; p++) {
-    if (own) {
+CM.start({
+  theme: 'classic', title: 'Climate risk, 2050',
+  modes: [{ id: 'own', label: 'Own colours' }, { id: 'score', label: 'One score' }],
+  glyph: l => sw(COL[l.id]),
+  paint(o, { sel, F, n, combine }) {
+    if (CM.st.mode === 'score') {
+      const S = combine();
+      for (let p = 0; p < n * n; p++) if (S[p] >= 0) { const c = RAMP[Math.round(S[p] * 100)]; o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; o[p * 4 + 3] = 210; }
+      return;
+    }
+    const C = sel.map(l => hex(COL[l.id]));
+    for (let p = 0; p < n * n; p++) {
       let r = 0, g = 0, b = 0, a = 0;
       for (let i = 0; i < sel.length; i++) {
-        const s = ds[i] ? L[i][ds[i][p]] : -1;
-        if (s <= 0.02) continue;
-        const al = 0.15 + 0.7 * s, k = a * (1 - al), na = al + k;
+        const s = F[i] ? F[i][p] : -1;
+        if (s <= .02) continue;
+        const al = .15 + .7 * s, k = a * (1 - al), na = al + k;
         r = (C[i][0] * al + r * k) / na; g = (C[i][1] * al + g * k) / na; b = (C[i][2] * al + b * k) / na; a = na;
       }
-      if (a > 0) { o[p * 4] = r; o[p * 4 + 1] = g; o[p * 4 + 2] = b; o[p * 4 + 3] = a * 255; }
-    } else {
-      let sw = 0, ww = 0, wz = 0, real = false;
-      for (let i = 0; i < sel.length; i++) {
-        const s = ds[i] ? L[i][ds[i][p]] : -1;
-        if (s >= 0) { sw += w[i] * s; ww += w[i]; if (!nd0[i]) real = true; } else if (nd0[i]) wz += w[i];
-      }
-      if (real) ww += wz;
-      if (ww > 0 && (real || onlyNd0)) { const c = SEQRGB[Math.round(sw / ww * 100)]; o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; o[p * 4 + 3] = 215; }
+      if (a) { o[p * 4] = r; o[p * 4 + 1] = g; o[p * 4 + 2] = b; o[p * 4 + 3] = a * 230; }
     }
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-const Hazards = L.GridLayer.extend({
-  createTile(co, done) {
-    const cv = document.createElement('canvas'); cv.width = cv.height = 256;
-    const sel = selData();
-    Promise.all(sel.map(l => px(tileUrl(l, per(l), co.z, co.x, co.y)))).then(ds => {
-      if (ds.some(Boolean)) paint(cv.getContext('2d'), sel, ds);
-      done(null, cv);
-    });
-    return cv;
-  }
+  },
+  legend(sel) {
+    if (CM.st.mode === 'score') return `<div class="scale">${SEQ.map(c => `<span style="background:${c}"></span>`).join('')}</div>
+      <div class="ticks"><span>0 low</span><span>score</span><span>100 severe</span></div>
+      <div class="fn">${sel.map(l => l.name).join(', ')}</div>`;
+    return sel.map(l => `<div class="row">${sw(COL[l.id])}<span class="nm">${l.name}</span><span class="rg">${CM.rangeLabel(l)}</span></div>`).join('')
+      + '<div class="fn">Stronger colour = worse. Colours mix where hazards overlap.</div>';
+  },
 });
-
-// --- map
-const map = L.map('map', { minZoom: 3, maxZoom: 13 }).setView([52, 14], 4); // integer zooms: the Esri base map shows seams at fractional zoom
-const esri = s => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${dark ? 'Dark' : 'Light'}_Gray_${s}/MapServer/tile/{z}/{y}/{x}`;
-L.tileLayer(esri('Base'), { attribution: 'Base map &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors', maxNativeZoom: 16 }).addTo(map);
-map.createPane('detail').style.zIndex = 450;
-map.createPane('labels').style.zIndex = 620;
-map.getPane('labels').style.pointerEvents = 'none';
-const hz = new Hazards({ minNativeZoom: 3, maxNativeZoom: 7, bounds: box, opacity: .85, attribution: 'Data: CHELSA, World Bank CCKP, WRI Aqueduct, JRC' }).addTo(map);
-const labels = L.tileLayer(esri('Reference'), { pane: 'labels', maxNativeZoom: 16 }).addTo(map);
-const live = {};
-
-function refresh() {
-  Object.keys(luts).forEach(k => delete luts[k]);
-  hz.redraw();
-  for (const l of LIVE) {
-    if (st.on.has(l.id)) live[l.id] = (live[l.id] || l.lyr()).addTo(map);
-    else if (live[l.id]) map.removeLayer(live[l.id]);
-  }
-  document.querySelectorAll('#layers .opt').forEach(el => el.classList.toggle('on', st.on.has(el.dataset.id)));
-  document.getElementById('panel').classList.toggle('combined', st.mode === 'combined');
-  document.getElementById('modenote').textContent = st.mode === 'own'
-    ? 'Stronger colour = worse. Where hazards overlap, the colours mix. Best with 1 to 3 hazards.'
-    : 'Weighted average of the selected hazards. Set a weight under each selected hazard.';
-  legend(); ranking();
-}
-
-function legend() {
-  const sel = selData(), lv = LIVE.filter(l => st.on.has(l.id));
-  const label = { h: 'Today', m: '2050, moderate (SSP2-4.5)', x: '2050, high (SSP5-8.5)' }[st.period];
-  const notes = sel.filter(l => per(l) !== st.period).map(l => `${l.name}: ${per(l) === 'h' ? 'present-day only' : 'no "today" value, shows 2050 moderate'}.`);
-  if (sel.some(l => l.id === 'ws') && st.period !== 'h') notes.push(`Water stress 2050 uses Aqueduct ${st.period === 'm' ? '"business as usual" (SSP3-7.0)' : '"pessimistic" (SSP5-8.5)'}.`);
-  let h = `<div class="t">${label}</div>`;
-  if (!sel.length && !lv.length) h += '<div class="empty">Select one or more hazards in the side panel.</div>';
-  if (st.mode === 'combined' && sel.length) {
-    h += `<div class="it"><div class="nm"><span>Combined score: ${sel.map(l => l.name).join(', ')}</span><span>0-100</span></div>
-      <div class="bar" style="background:linear-gradient(90deg,${SEQ.join(',')})"></div><div class="ticks"><span>0 low</span><span>50</span><span>100 severe</span></div></div>`;
-  } else {
-    for (const l of sel) {
-      const [r, g, b] = rgbOf(l.col);
-      h += `<div class="it"><div class="nm"><span>${l.name}</span><span>${l.res}</span></div>
-        <div class="bar" style="background:linear-gradient(90deg,rgba(${r},${g},${b},.15),rgb(${r},${g},${b}))"></div>
-        <div class="ticks"><span>${tick(l, l.s[0])}</span><span>${tick(l, l.s[1])}${l.s[1] > l.s[0] ? ' or more' : ' or less'}</span></div>
-        <div class="warn">${l.unit}</div></div>`;
-    }
-  }
-  for (const l of lv) h += `<div class="it"><div class="nm"><span><span class="sw" style="display:inline-block;vertical-align:-1px;background:${l.col}"></span> ${l.name}</span><span>${l.res}</span></div><div class="warn">${l.unit}</div></div>`;
-  if (notes.length) h += `<div class="warn">${notes.join(' ')}</div>`;
-  document.getElementById('legend').innerHTML = h;
-}
-
-// --- values at a point (read from the native-zoom tiles)
-async function valueAt(l, p, lat, lng) {
-  if (!ENC[l.id].sc.includes(p)) return null;
-  const n = 2 ** 7 * 256, X = (lng + 180) / 360 * n, Y = (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * n;
-  const d = await px(tileUrl(l, p, 7, Math.floor(X / 256), Math.floor(Y / 256)));
-  const c = d ? d[Math.floor(Y % 256) * 256 + Math.floor(X % 256)] : 0;
-  return c ? dec(l.id, c) : null;
-}
-function nearestCity(lat, lng) {
-  let best = null, bd = 1e9;
-  for (const c of CITIES) { const d = (c[3] - lat) ** 2 + ((c[4] - lng) * Math.cos(lat * Math.PI / 180)) ** 2; if (d < bd) { bd = d; best = c; } }
-  return Math.sqrt(bd) * 111 < 25 ? best : null;
-}
-function combined(vals, raw) { // vals: id -> value for the current period. raw: no 0..1 clamp (to break ties)
-  let sw = 0, ww = 0;
-  for (const l of selData()) {
-    const v = vals[l.id], s = ok(v) ? (raw ? (v - l.s[0]) / (l.s[1] - l.s[0]) : sev(l, v)) : (l.nd0 ? 0 : null);
-    if (s !== null) { sw += st.w[l.id] * s; ww += st.w[l.id]; }
-  }
-  return ww ? 100 * sw / ww : null;
-}
-async function openAt(lat, lng, title) {
-  const pop = L.popup({ maxWidth: 430 }).setLatLng([lat, lng]).setContent('<div class="pop">Loading values...</div>').openOn(map);
-  const V = {};
-  await Promise.all(DATA.flatMap(l => ['h', 'm', 'x'].map(async p => { V[l.id + p] = await valueAt(l, p, lat, lng); })));
-  const cell = (l, p) => { const v = V[l.id + p]; return ok(v) ? (l.sign && v > 0 ? '+' : '') + fmt(v) + (l.short ? `<small> ${l.short}</small>` : '') : '-'; };
-  let rows = '', g0 = '';
-  for (const l of DATA) {
-    if (l.g !== g0) rows += `<tr class="g"><td colspan="4">${(g0 = l.g)}</td></tr>`;
-    rows += `<tr class="${st.on.has(l.id) ? 'sel' : ''}"><td>${l.name} <small>${l.res}</small></td><td>${cell(l, 'h')}</td><td>${cell(l, 'm')}</td><td>${cell(l, 'x')}</td></tr>`;
-  }
-  const cur = Object.fromEntries(DATA.map(l => [l.id, V[l.id + per(l)]]));
-  const sc = combined(cur);
-  const worst = selData().filter(l => ok(cur[l.id]) && sev(l, cur[l.id]) >= 0.4).map(l => l.name);
-  const near = nearestCity(lat, lng);
-  pop.setContent(`<div class="pop"><h3>${title || (near ? 'Near ' + near[0] + ', ' + near[1] : 'Selected place')}</h3>
-    <div class="ll">${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E. Bold rows = selected hazards.</div>
-    <table><tr><th></th><th>Today</th><th>2050 mod.</th><th>2050 high</th></tr>${rows}</table>
-    <div class="drv">${sc === null ? '' : `Combined score of the selected hazards (${st.period === 'h' ? 'today' : st.period === 'm' ? '2050 moderate' : '2050 high'}): <b>${fmt(sc)}</b> of 100. `}
-    ${worst.length ? 'Main concerns: <b>' + worst.join(', ') + '</b>.' : selData().length ? 'No selected hazard is high here.' : ''}</div></div>`);
-}
-map.on('click', e => openAt(e.latlng.lat, e.latlng.lng));
-
-// --- city ranking (values precomputed per city at 1 km)
-const cityVal = (l, i) => (CV[l.id + '_' + per(l)] || [])[i];
-function ranking() {
-  const el = document.getElementById('top');
-  if (!selData().length) { el.innerHTML = '<li style="cursor:default">Select a hazard to rank cities.</li>'; return; }
-  const list = CITIES.map((c, i) => { const v = Object.fromEntries(selData().map(l => [l.id, cityVal(l, i)])); return { c, i, s: combined(v), r: combined(v, true) }; })
-    .filter(x => x.c[2] >= st.minPop && (!st.country || x.c[1] === st.country) && ok(x.s)).sort((a, b) => a.s - b.s || a.r - b.r).slice(0, 12);
-  if (!list.length) { el.innerHTML = '<li style="cursor:default">No city in this country is this big. Choose a lower population.</li>'; return; }
-  el.innerHTML = list.map(({ c, i, s }) => {
-    const worst = selData().filter(l => ok(cityVal(l, i)) && sev(l, cityVal(l, i)) >= 0.4).map(l => l.name);
-    return `<li data-i="${i}"><span><b>${c[0]}</b>, ${c[1]}<span class="c">${worst.length ? 'Watch: ' + worst.join(', ') : 'No selected hazard is high'}</span></span><span class="s">${fmt(s)}</span></li>`;
-  }).join('');
-}
-function goCity(c) { map.flyTo([c[3], c[4]], 9, { duration: .8 }); map.once('moveend', () => openAt(c[3], c[4], `${c[0]}, ${c[1]}`)); }
-document.getElementById('top').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) goCity(CITIES[+li.dataset.i]); });
-document.getElementById('citylist').innerHTML = CITIES.map(c => `<option value="${c[0]}, ${c[1]}">`).join('');
-document.getElementById('search').addEventListener('change', e => {
-  const q = e.target.value.toLowerCase();
-  const c = CITIES.find(c => `${c[0]}, ${c[1]}`.toLowerCase() === q) || CITIES.find(c => c[0].toLowerCase().startsWith(q));
-  if (c) goCity(c);
-});
-
-// --- controls
-document.getElementById('layers').innerHTML = ['Heat', 'Water', 'Floods', 'Land and fire'].map(g =>
-  `<div class="grp">${g}</div>` + ALL.filter(l => l.g === g).map(l => `<label class="opt" data-id="${l.id}">
-    <input type="checkbox" value="${l.id}" ${st.on.has(l.id) ? 'checked' : ''}><span class="sw" style="background:${l.col}"></span>
-    <span>${l.name}</span><span class="badge">${l.res}</span>
-    ${l.s ? `<span class="wt"><span>Weight</span><input type="range" min="0" max="3" step="0.5" value="1" data-w="${l.id}"><output>1</output></span>` : ''}</label>`).join('')).join('');
-document.getElementById('layers').addEventListener('change', e => {
-  if (e.target.type !== 'checkbox') return;
-  e.target.checked ? st.on.add(e.target.value) : st.on.delete(e.target.value);
-  refresh();
-});
-let raf = 0;
-document.getElementById('layers').addEventListener('input', e => {
-  if (!e.target.dataset.w) return;
-  st.w[e.target.dataset.w] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value;
-  cancelAnimationFrame(raf); raf = requestAnimationFrame(refresh);
-});
-document.getElementById('layers').addEventListener('click', e => { if (e.target.closest('.wt')) e.preventDefault(); }); // weight slider sits inside the label: do not toggle the box
-const seg = (id, key, attr) => document.getElementById(id).addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  st[key] = b.dataset[attr];
-  document.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle('on', x === b));
-  refresh();
-});
-seg('period', 'period', 'p');
-seg('mode', 'mode', 'm');
-document.getElementById('opacity').addEventListener('input', e => hz.setOpacity(+e.target.value));
-document.getElementById('labels').addEventListener('change', e => e.target.checked ? labels.addTo(map) : map.removeLayer(labels));
-document.getElementById('minpop').addEventListener('change', e => { st.minPop = +e.target.value; ranking(); });
-document.getElementById('country').insertAdjacentHTML('beforeend', [...new Set(CITIES.map(c => c[1]))].sort((a, b) => a.localeCompare(b))
-  .map(n => `<option>${n}</option>`).join(''));
-document.getElementById('country').addEventListener('change', e => { st.country = e.target.value; ranking(); });
-document.getElementById('toggle').addEventListener('click', () => document.getElementById('panel').classList.toggle('open'));
-document.getElementById('thresholds').innerHTML = DATA.map(l =>
-  `<li>${l.name}: ${tick(l, l.s[0])} = 0, ${tick(l, l.s[1])} ${l.s[1] > l.s[0] ? 'or more' : 'or less'} = 1 (${l.unit})</li>`).join('');
-if (location.protocol === 'file:') document.getElementById('banner').style.display = 'block';
-
-refresh();
 </script>
 </body>
 </html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Climate Risk - Engraving</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="app/core.css">
+</head>
+<body>
+<div id="app"><aside id="panel"></aside><div id="map"></div></div>
+<div id="legend"></div>
+<div id="banner">This map needs a small local web server. Double-click <b>start.command</b> in the map folder.</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/layers.js"></script><script src="data/cities.js"></script><script src="data/base.js"></script>
+<script src="app/core.js"></script>
+<script>
+/* 1 - Engraving. Every hazard is a field of parallel lines at its own angle; line weight carries severity,
+   like tone in a copper engraving. Overlapping hazards cross-hatch, so compound risk reads as darker, denser cloth.
+   The first hazard you pick is the one olive channel. */
+const ANG = [45, -45, 0, 90];
+const SP = 6; // line pitch in CSS px, constant at every zoom
+
+const glyph = (l, i) => {
+  if (i < 0) return '<svg class="gl" viewBox="0 0 18 12"><rect x=".5" y=".5" width="17" height="11" fill="none" stroke="var(--line)"/></svg>';
+  const a = ANG[i], c = i === 0 ? 'var(--accent)' : 'var(--ink)';
+  return `<svg class="gl" viewBox="0 0 18 12"><defs><clipPath id="c${l.id}"><rect width="18" height="12"/></clipPath></defs>
+    <g clip-path="url(#c${l.id})" transform="rotate(${-a} 9 6)" stroke="${c}" stroke-width="1.2">${[-12, -8, -4, 0, 4, 8, 12].map(o => `<line x1="-10" x2="28" y1="${6 + o}" y2="${6 + o}"/>`).join('')}</g>
+    <rect x=".5" y=".5" width="17" height="11" fill="none" stroke="var(--line)"/></svg>`;
+};
+
+CM.start({
+  title: 'Engraving', eyebrow: 'Climate risk 2050 · version 1', maxOn: 4,
+  modes: [{ id: 'layers', label: 'Each hazard' }, { id: 'score', label: 'One score' }],
+  glyph,
+  paint(o, { sel, F, n, R, co, combine }) {
+    const sp = SP * R, ink = CM.col.ink, acc = CM.col.accent;
+    const L = CM.st.mode === 'score'
+      ? [{ S: combine(), a: ANG[0], c: ink }]
+      : sel.map((l, i) => ({ S: F[i], a: ANG[i], c: i === 0 ? acc : ink })).filter(x => x.S);
+    for (const x of L) { x.u = Math.sin(x.a * Math.PI / 180); x.v = Math.cos(x.a * Math.PI / 180); } // line normal; 0 = horizontal, 45 = rising
+    const gx0 = co.x * n, gy0 = co.y * n;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const p = j * n + i, gx = gx0 + i, gy = gy0 + j;
+      let r = 0, g = 0, b = 0, a = 0;
+      for (const x of L) {
+        const s = x.S[p];
+        if (s <= .1) continue; // faint values would only add dash noise along small rivers
+        const t = ((gx * x.u + gy * x.v) % sp + sp) % sp, d = Math.abs(t - sp / 2);
+        const w = Math.min(sp - R, R * (.55 + 4.6 * s)), cov = Math.max(0, Math.min(1, w / 2 - d + .5)) * .92;
+        if (!cov) continue;
+        const k = a * (1 - cov), na = cov + k;
+        r = (x.c[0] * cov + r * k) / na; g = (x.c[1] * cov + g * k) / na; b = (x.c[2] * cov + b * k) / na; a = na;
+      }
+      if (a) { o[p * 4] = r; o[p * 4 + 1] = g; o[p * 4 + 2] = b; o[p * 4 + 3] = a * 255; }
+    }
+  },
+  legend(sel) {
+    if (CM.st.mode === 'score') return `<div class="row">${glyph({ id: 'sc' }, 1)}<span class="nm">Combined score</span><span class="rg">0→100</span></div>
+      <div class="fn">Heavier lines = higher score of ${sel.map(l => l.name.toLowerCase()).join(', ')}.</div>`;
+    return sel.map((l, i) => `<div class="row">${glyph(l, i)}<span class="nm">${l.name}</span><span class="rg">${CM.rangeLabel(l)}</span></div>`).join('')
+      + '<div class="fn">Heavier line = worse. Crossing lines = several hazards at once.</div>';
+  },
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Five ways to draw Europe's climate risk to 2050 from the same data">
+<title>Climate Risk Versions - Maciej Górczak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #e8e2d1; --bg-2: #ded7c2; --line: #c9bfa4; --line-strong: #2b2a1e; --ink: #2b2a1e; --ink-soft: #4a4736; --ink-muted: #605c48; --accent: #5b6a26;
+  --mono: 'IBM Plex Mono', Menlo, monospace; }
+@media (prefers-color-scheme: dark) { :root { --bg: #20201a; --bg-2: #292921; --line: #3c3b30; --line-strong: #e8e2d1; --ink: #e8e2d1; --ink-soft: #c4bfa8; --ink-muted: #928d75; --accent: #a3b458; } }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font: 17px/1.65 'Space Grotesk', -apple-system, sans-serif; color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 2rem 2rem 1.5rem; }
+nav { display: flex; gap: 2rem; padding-bottom: .85rem; border-bottom: 2px solid var(--line-strong); margin-bottom: 3rem; }
+nav a { font: 500 .72rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-muted); text-decoration: none; }
+nav a:first-child { margin-right: auto; color: var(--ink); font-weight: 700; }
+nav a:hover { color: var(--ink); } nav a.on { color: var(--accent); }
+.eyebrow { font: 500 .72rem var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 1rem; }
+h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 500; letter-spacing: -.02em; line-height: 1.05; margin-bottom: 1.5rem; }
+.lede { font-size: 1.2rem; line-height: 1.55; color: var(--ink-muted); max-width: 40rem; margin-bottom: 3rem; }
+ol { list-style: none; border-top: 2px solid var(--line-strong); }
+li { border-bottom: 1px solid var(--line); }
+li a { display: grid; grid-template-columns: 1fr; gap: 1.25rem; padding: 1.5rem 0; color: var(--ink); text-decoration: none; }
+li img { width: 100%; display: block; border: 1px solid var(--line); aspect-ratio: 16 / 10; object-fit: cover; object-position: right center; }
+.no { font: 500 .68rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-muted); }
+.t { font-size: 1.5rem; font-weight: 500; letter-spacing: -.01em; line-height: 1.15; margin: .35rem 0 .5rem; transition: color .18s; }
+li a:hover .t { color: var(--accent); }
+.s { font-size: .98rem; color: var(--ink-soft); line-height: 1.5; max-width: 46ch; }
+.best { font: .8rem/1.5 var(--mono); color: var(--ink-muted); margin-top: .75rem; max-width: 52ch; }
+.best b { font-weight: 500; color: var(--ink); }
+footer { padding-top: 3rem; font: .7rem var(--mono); letter-spacing: .1em; color: var(--ink-muted); }
+@media (min-width: 860px) { li a { grid-template-columns: 1.15fr .85fr; gap: 3rem; align-items: center; } }
+@media (max-width: 640px) { .wrap { padding: 1.5rem 1.5rem 1rem; } nav { gap: 1.5rem; flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a href="/">Home</a><a href="/about.html">About</a><a href="/misc.html" class="on">Misc</a></nav>
+  <div class="eyebrow">Europe climate risk to 2050 &middot; design study</div>
+  <h1>Five ways to draw the same data</h1>
+  <p class="lede">Same twelve hazards, same 1 km data. Only the drawing changes. Open each one, click a city you know, and keep the one that answers your question fastest.</p>
+  <ol>
+    <li><a href="v1.html"><img src="versions/v1.jpg" alt="Engraving version" loading="lazy"><div>
+      <div class="no">01</div><div class="t">Engraving</div>
+      <p class="s">Each hazard is line hatching at its own angle. A heavier line means a worse hazard. Where hazards overlap, the lines cross into a denser weave.</p>
+      <p class="best"><b>Best for</b> seeing where two to four hazards meet, in one ink.</p></div></a></li>
+    <li><a href="v2.html"><img src="versions/v2.jpg" alt="Survey contours version" loading="lazy"><div>
+      <div class="no">02</div><div class="t">Survey contours</div>
+      <p class="s">The combined score as a terrain: a contour every 10 points, a bold line every 50, and the olive line at 60 as the watch level.</p>
+      <p class="best"><b>Best for</b> seeing where risk rises fast, like a steep slope, and where it stays flat.</p></div></a></li>
+    <li><a href="v3.html"><img src="versions/v3.jpg" alt="Halftone version" loading="lazy"><div>
+      <div class="no">03</div><div class="t">Halftone</div>
+      <p class="s">Each hazard is a dot screen at its own print angle, as in four-colour printing. A bigger dot means a worse hazard. Overlaps form rosettes.</p>
+      <p class="best"><b>Best for</b> comparing up to four hazards at a glance, without colours that mix into mud.</p></div></a></li>
+    <li><a href="v4.html"><img src="versions/v4.jpg" alt="Atlas plates version" loading="lazy"><div>
+      <div class="no">04</div><div class="t">Atlas plates</div>
+      <p class="s">Twelve small maps, one per hazard, are the controls. The main map shows the score in five steps. Click a place, and every plate marks it and shows its value.</p>
+      <p class="best"><b>Best for</b> the full profile of one place, and the big picture of each hazard.</p></div></a></li>
+    <li><a href="v5.html"><img src="versions/v5.jpg" alt="Field dossier version" loading="lazy"><div>
+      <div class="no">05</div><div class="t">Field dossier</div>
+      <p class="s">A quiet map with one olive watch line, and a card for the place you click: each hazard as a range from today to 2050. Pin one place, click another, compare.</p>
+      <p class="best"><b>Best for</b> choosing between two or three candidate cities.</p></div></a></li>
+    <li><a href="index.html"><img src="versions/classic.jpg" alt="Classic version" loading="lazy"><div>
+      <div class="no">00</div><div class="t">Classic</div>
+      <p class="s">The current map, cleaned up: a colour per hazard, or one score.</p>
+      <p class="best"><b>Best for</b> people who expect a standard web map.</p></div></a></li>
+  </ol>
+  <footer>Data: CHELSA, World Bank CCKP, WRI Aqueduct, Copernicus EMS / JRC, NOAA, Global Forest Watch, EFFIS, Natural Earth. Temet nosce, 2026</footer>
+</div>
+</body>
+</html>
